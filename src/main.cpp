@@ -69,6 +69,16 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+#ifdef IMGUI_HAS_VIEWPORT
+        ImGuiViewport *viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->GetWorkPos());
+        ImGui::SetNextWindowSize(viewport->GetWorkSize());
+        ImGui::SetNextWindowViewport(viewport->ID);
+#else
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+#endif
+
         // Diálogo de seleção de arquivo
         if (showFileDialog)
         {
@@ -124,8 +134,8 @@ int main()
                         }
                     }
                 }
-                ImGui::End();
             }
+            ImGui::End();
         }
         else
         {
