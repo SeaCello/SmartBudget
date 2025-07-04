@@ -59,6 +59,7 @@ int main()
     static char date[64] = "";
     static char description[256] = "";
     static int transactionType = 0;
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
     // Loop principal
     while (!glfwWindowShouldClose(window))
@@ -71,65 +72,59 @@ int main()
         // Diálogo de seleção de arquivo
         if (showFileDialog)
         {
-            ImGui::OpenPopup("Seleção de Arquivo");
-            if (ImGui::BeginPopupModal("Seleção de Arquivo", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            ImGui::Begin("Seleção de Arquivo", nullptr, window_flags);
+            ImGui::Text("Escolha uma opção:");
+            
+            if (ImGui::Button("Criar Novo Arquivo"))
             {
-                ImGui::Text("Escolha uma opção:");
-                
-                if (ImGui::Button("Criar Novo Arquivo"))
-                {
-                    fileDialogOption = 1;
-                    memset(newFilename, 0, sizeof(newFilename));
-                }
-                
-                ImGui::SameLine();
-                
-                if (ImGui::Button("Carregar Arquivo Existente"))
-                {
-                    fileDialogOption = 2;
-                }
+                fileDialogOption = 1;
+                memset(newFilename, 0, sizeof(newFilename));
+            }
+            
+            ImGui::SameLine();
+            
+            if (ImGui::Button("Carregar Arquivo Existente"))
+            {
+                fileDialogOption = 2;
+            }
 
-                if (fileDialogOption == 1)
+            if (fileDialogOption == 1)
+            {
+                ImGui::InputText("Nome do Arquivo", newFilename, IM_ARRAYSIZE(newFilename));
+                if (ImGui::Button("Criar") && strlen(newFilename) > 0)
                 {
-                    ImGui::InputText("Nome do Arquivo", newFilename, IM_ARRAYSIZE(newFilename));
-                    if (ImGui::Button("Criar") && strlen(newFilename) > 0)
-                    {
-                        filename = fileManager.generateUniqueFilename(newFilename);
-                        showFileDialog = false;
-                        ImGui::CloseCurrentPopup();
-                    }
+                    filename = fileManager.generateUniqueFilename(newFilename);
+                    showFileDialog = false;
                 }
-                else if (fileDialogOption == 2)
+            }
+            else if (fileDialogOption == 2)
+            {
+                auto files = fileManager.listCSVFiles();
+                if (files.empty())
                 {
-                    auto files = fileManager.listCSVFiles();
-                    if (files.empty())
+                    ImGui::Text("Nenhum arquivo CSV encontrado");
+                }
+                else
+                {
+                    for (const auto& file : files)
                     {
-                        ImGui::Text("Nenhum arquivo CSV encontrado");
-                    }
-                    else
-                    {
-                        for (const auto& file : files)
+                        if (ImGui::Selectable(file.c_str()))
                         {
-                            if (ImGui::Selectable(file.c_str()))
+                            filename = file;
+                            std::vector<Transaction> loadedTransactions;
+                            if (fileManager.loadFromFile(loadedTransactions, filename))
                             {
-                                filename = file;
-                                std::vector<Transaction> loadedTransactions;
-                                if (fileManager.loadFromFile(loadedTransactions, filename))
+                                manager = TransactionManager(); // Reset
+                                for (const auto& t : loadedTransactions)
                                 {
-                                    manager = TransactionManager(); // Reset
-                                    for (const auto& t : loadedTransactions)
-                                    {
-                                        manager.addTransaction(t);
-                                    }
+                                    manager.addTransaction(t);
                                 }
-                                showFileDialog = false;
-                                ImGui::CloseCurrentPopup();
                             }
+                            showFileDialog = false;
                         }
                     }
                 }
-
-                ImGui::EndPopup();
+                ImGui::End();
             }
         }
         else
@@ -139,7 +134,7 @@ int main()
             {
             case 0: // Menu Principal
                 {
-                    ImGui::Begin("Menu Principal", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    ImGui::Begin("Menu Principal", nullptr, window_flags);
                     
                     if (!filename.empty())
                         ImGui::Text("Arquivo: %s", filename.c_str());
@@ -165,7 +160,7 @@ int main()
 
             case 1: // Menu Transações
                 {
-                    ImGui::Begin("Transações", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    ImGui::Begin("Transações", nullptr, window_flags);
                     
                     if (ImGui::Button("Adicionar Transação"))
                     {
@@ -194,7 +189,7 @@ int main()
 
             case 2: // Menu Relatórios
             {
-                ImGui::Begin("Relatórios", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                ImGui::Begin("Relatórios", nullptr, window_flags);
 
                 if (ImGui::Button("Saldo Total"))
                 {
@@ -223,7 +218,7 @@ int main()
 
             case 3: // Adicionar Transação
                 {
-                    ImGui::Begin("Nova Transação", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    ImGui::Begin("Nova Transação", nullptr, window_flags);
                     
                     ImGui::InputText("Valor (R$)", amount, IM_ARRAYSIZE(amount), ImGuiInputTextFlags_CharsDecimal);
                     ImGui::RadioButton("Despesa", &transactionType, 0); ImGui::SameLine();
@@ -256,7 +251,7 @@ int main()
 
             case 4: // Listar Transações
                 {
-                    ImGui::Begin("Lista de Transações", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    ImGui::Begin("Lista de Transações", nullptr, window_flags);
                     
                     const auto& transactions = manager.getTransactions();
                     if (transactions.empty())
@@ -297,7 +292,7 @@ int main()
 
             case 5: // Relatório por Categoria
                 {
-                    ImGui::Begin("Totais por Categoria", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    ImGui::Begin("Totais por Categoria", nullptr, window_flags);
                     
                     std::map<std::string, double> categoryTotals;
                     const auto& transactions = manager.getTransactions();
@@ -324,7 +319,7 @@ int main()
 
             case 6: // Exibir Saldo Total
                 {
-                    ImGui::Begin("Saldo Total", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    ImGui::Begin("Saldo Total", nullptr, window_flags);
 
                     ImGui::Text("Saldo atual calculado:");
                     ImGui::Separator();
@@ -340,7 +335,7 @@ int main()
 
             case 7: // Editar Transação
             {
-                ImGui::Begin("Editar Transação", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                ImGui::Begin("Editar Transação", nullptr, window_flags);
 
                 const auto& list = manager.getTransactions();
                 static int indexToEdit = 0;
@@ -398,7 +393,7 @@ int main()
 
             case 8: // Remover Transação
             {
-                ImGui::Begin("Remover Transação", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                ImGui::Begin("Remover Transação", nullptr, window_flags);
 
                 const auto& list = manager.getTransactions();
                 static int indexToRemove = 0;
@@ -433,147 +428,144 @@ int main()
                 }
                 break;
 
-                case 9: // Filtro por Valor
+            case 9: // Filtro por Valor
+            {
+                ImGui::Begin("Filtrar por Valor", nullptr, window_flags);
+
+                static char valorMinStr[64] = "";
+                static char valorMaxStr[64] = "";
+
+                ImGui::InputText("Valor mínimo", valorMinStr, IM_ARRAYSIZE(valorMinStr), ImGuiInputTextFlags_CharsDecimal);
+                ImGui::InputText("Valor máximo", valorMaxStr, IM_ARRAYSIZE(valorMaxStr), ImGuiInputTextFlags_CharsDecimal);
+
+                if (ImGui::Button("Filtrar") && strlen(valorMinStr) > 0 && strlen(valorMaxStr) > 0)
                 {
-                    ImGui::Begin("Filtrar por Valor", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+                    double minVal = std::stod(valorMinStr);
+                    double maxVal = std::stod(valorMaxStr);
+                    const auto& lista = manager.getTransactions();
 
-                    static char valorMinStr[64] = "";
-                    static char valorMaxStr[64] = "";
-
-                    ImGui::InputText("Valor mínimo", valorMinStr, IM_ARRAYSIZE(valorMinStr), ImGuiInputTextFlags_CharsDecimal);
-                    ImGui::InputText("Valor máximo", valorMaxStr, IM_ARRAYSIZE(valorMaxStr), ImGuiInputTextFlags_CharsDecimal);
-
-                    if (ImGui::Button("Filtrar") && strlen(valorMinStr) > 0 && strlen(valorMaxStr) > 0)
+                    for (const auto& t : lista)
                     {
-                        double minVal = std::stod(valorMinStr);
-                        double maxVal = std::stod(valorMaxStr);
-                        const auto& lista = manager.getTransactions();
-
-                        for (const auto& t : lista)
-                        {
-                            double val = t.getAmount();
-                            if (val >= minVal && val <= maxVal)
-                            {
-                                ImGui::Separator();
-                                ImGui::Text("Valor: R$ %.2f", t.getAmount());
-                                ImGui::Text("Tipo: %s", t.getType().c_str());
-                                ImGui::Text("Categoria: %s", t.getCategory().c_str());
-                                ImGui::Text("Data: %s", t.getDate().c_str());
-                                ImGui::TextWrapped("Descrição: %s", t.getDescription().c_str());
-                            }
-                        }
-                    }
-
-                    if (ImGui::Button("Voltar"))
-                        selectedMenu = 2;
-
-                    ImGui::End();
-                }
-                break;
-
-                case 10: // Filtro por Data
-                {
-                    ImGui::Begin("Filtrar por Data", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-
-                    static char dataFiltro[64] = "";
-                    ImGui::InputText("Data (AAAA-MM-DD)", dataFiltro, IM_ARRAYSIZE(dataFiltro));
-
-                    if (ImGui::Button("Filtrar") && strlen(dataFiltro) > 0)
-                    {
-                        const auto& lista = manager.getTransactions();
-                        for (const auto& t : lista)
-                        {
-                            if (t.getDate() == dataFiltro)
-                            {
-                                ImGui::Separator();
-                                ImGui::Text("Valor: R$ %.2f", t.getAmount());
-                                ImGui::Text("Tipo: %s", t.getType().c_str());
-                                ImGui::Text("Categoria: %s", t.getCategory().c_str());
-                                ImGui::Text("Data: %s", t.getDate().c_str());
-                                ImGui::TextWrapped("Descrição: %s", t.getDescription().c_str());
-                            }
-                        }
-                    }
-
-                    if (ImGui::Button("Voltar"))
-                        selectedMenu = 2;
-
-                    ImGui::End();
-                }
-                break;
-
-                case 11: // Total por Tipo
-                {
-                    ImGui::Begin("Total por Tipo", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-
-                    static int tipoSelecionado = 0; // 0 = Despesa, 1 = Renda
-                    ImGui::RadioButton("Despesas", &tipoSelecionado, 0); ImGui::SameLine();
-                    ImGui::RadioButton("Rendas", &tipoSelecionado, 1);
-
-                    std::string tipoStr = tipoSelecionado == 0 ? "despesa" : "renda";
-                    double total = analyzer.calculateTotalByType(manager.getTransactions(), tipoStr);
-                    ImGui::Text("Total de %s: R$ %.2f", tipoStr.c_str(), total);
-
-                    if (ImGui::Button("Voltar"))
-                        selectedMenu = 2;
-
-                    ImGui::End();
-                }
-                break;
-
-                case 12: // Excluir Arquivo
-                {
-                    ImGui::Begin("Excluir Arquivo", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-
-                    auto arquivos = fileManager.listCSVFiles();
-                    static int selectedToDelete = -1;
-
-                    if (arquivos.empty())
-                    {
-                        ImGui::Text("Nenhum arquivo .csv encontrado.");
-                    }
-                    else
-                    {
-                        for (int i = 0; i < (int)arquivos.size(); ++i)
-                        {
-                            if (ImGui::Selectable(arquivos[i].c_str(), selectedToDelete == i))
-                                selectedToDelete = i;
-                        }
-
-                        if (selectedToDelete != -1)
+                        double val = t.getAmount();
+                        if (val >= minVal && val <= maxVal)
                         {
                             ImGui::Separator();
-                            ImGui::Text("Excluir '%s'?", arquivos[selectedToDelete].c_str());
-
-                            if (ImGui::Button("Confirmar Exclusão"))
-                            {
-                                if (fileManager.deleteFile(arquivos[selectedToDelete]))
-                                {
-                                    ImGui::Text("Arquivo excluído com sucesso.");
-                                    if (arquivos[selectedToDelete] == filename)
-                                    {
-                                        filename.clear();
-                                        manager = TransactionManager();
-                                    }
-                                }
-                                else
-                                {
-                                    ImGui::Text("Erro ao excluir arquivo.");
-                                }
-                                selectedToDelete = -1;
-                            }
+                            ImGui::Text("Valor: R$ %.2f", t.getAmount());
+                            ImGui::Text("Tipo: %s", t.getType().c_str());
+                            ImGui::Text("Categoria: %s", t.getCategory().c_str());
+                            ImGui::Text("Data: %s", t.getDate().c_str());
+                            ImGui::TextWrapped("Descrição: %s", t.getDescription().c_str());
                         }
                     }
-
-                    if (ImGui::Button("Voltar"))
-                        selectedMenu = 0;
-
-                    ImGui::End();
                 }
-                break;
 
- 
+                if (ImGui::Button("Voltar"))
+                    selectedMenu = 2;
 
+                ImGui::End();
+            }
+            break;
+
+            case 10: // Filtro por Data
+            {
+                ImGui::Begin("Filtrar por Data", nullptr, window_flags);
+
+                static char dataFiltro[64] = "";
+                ImGui::InputText("Data (AAAA-MM-DD)", dataFiltro, IM_ARRAYSIZE(dataFiltro));
+
+                if (ImGui::Button("Filtrar") && strlen(dataFiltro) > 0)
+                {
+                    const auto& lista = manager.getTransactions();
+                    for (const auto& t : lista)
+                    {
+                        if (t.getDate() == dataFiltro)
+                        {
+                            ImGui::Separator();
+                            ImGui::Text("Valor: R$ %.2f", t.getAmount());
+                            ImGui::Text("Tipo: %s", t.getType().c_str());
+                            ImGui::Text("Categoria: %s", t.getCategory().c_str());
+                            ImGui::Text("Data: %s", t.getDate().c_str());
+                            ImGui::TextWrapped("Descrição: %s", t.getDescription().c_str());
+                        }
+                    }
+                }
+
+                if (ImGui::Button("Voltar"))
+                    selectedMenu = 2;
+
+                ImGui::End();
+            }
+            break;
+
+            case 11: // Total por Tipo
+            {
+                ImGui::Begin("Total por Tipo", nullptr, window_flags);
+
+                static int tipoSelecionado = 0; // 0 = Despesa, 1 = Renda
+                ImGui::RadioButton("Despesas", &tipoSelecionado, 0); ImGui::SameLine();
+                ImGui::RadioButton("Rendas", &tipoSelecionado, 1);
+
+                std::string tipoStr = tipoSelecionado == 0 ? "despesa" : "renda";
+                double total = analyzer.calculateTotalByType(manager.getTransactions(), tipoStr);
+                ImGui::Text("Total de %s: R$ %.2f", tipoStr.c_str(), total);
+
+                if (ImGui::Button("Voltar"))
+                    selectedMenu = 2;
+
+                ImGui::End();
+            }
+            break;
+
+            case 12: // Excluir Arquivo
+            {
+                ImGui::Begin("Excluir Arquivo", nullptr, window_flags);
+
+                auto arquivos = fileManager.listCSVFiles();
+                static int selectedToDelete = -1;
+
+                if (arquivos.empty())
+                {
+                    ImGui::Text("Nenhum arquivo .csv encontrado.");
+                }
+                else
+                {
+                    for (int i = 0; i < (int)arquivos.size(); ++i)
+                    {
+                        if (ImGui::Selectable(arquivos[i].c_str(), selectedToDelete == i))
+                            selectedToDelete = i;
+                    }
+
+                    if (selectedToDelete != -1)
+                    {
+                        ImGui::Separator();
+                        ImGui::Text("Excluir '%s'?", arquivos[selectedToDelete].c_str());
+
+                        if (ImGui::Button("Confirmar Exclusão"))
+                        {
+                            if (fileManager.deleteFile(arquivos[selectedToDelete]))
+                            {
+                                ImGui::Text("Arquivo excluído com sucesso.");
+                                if (arquivos[selectedToDelete] == filename)
+                                {
+                                    filename.clear();
+                                    manager = TransactionManager();
+                                }
+                            }
+                            else
+                            {
+                                ImGui::Text("Erro ao excluir arquivo.");
+                            }
+                            selectedToDelete = -1;
+                        }
+                    }
+                }
+
+                if (ImGui::Button("Voltar"))
+                    selectedMenu = 0;
+
+                ImGui::End();
+            }
+            break;
             }
         }
 
